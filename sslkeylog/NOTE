@@ -1,0 +1,4 @@
+Taken from
+https://git.lekensteyn.nl/peter/wireshark-notes/tree/src/sslkeylog.c
+and provided for convenience (used to extract the premaster secrets from the
+tor deamon, which is necessary for the cell dissector to be usable at all)
