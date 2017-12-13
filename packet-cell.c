@@ -39,6 +39,8 @@
 #define SSL_CELL_DEFAULT_PORT_RANGE "5000"
 #define CELL_MAX_INFO_COLUMN_LEN 100
 
+static dissector_handle_t cell_handle;
+
 /* Forward declaration that is needed below if using the
  * proto_reg_handoff_cell function as a callback for when protocol
  * preferences get changed. */
@@ -340,12 +342,14 @@ proto_register_cell(void)
 
 static void
 range_delete_cell_ssl_callback(guint32 port) {
-	ssl_dissector_delete(port, "cell", TRUE);
+	// ORIGINAL: ssl_dissector_delete(port, "cell", TRUE);
+    ssl_dissector_delete(port, cell_handle);
 }
 
 static void
 range_add_cell_ssl_callback(guint32 port) {
-	ssl_dissector_add(port, "cell", TRUE);
+	// ORIGINAL: ssl_dissector_add(port, "cell", TRUE);
+    ssl_dissector_add(port, cell_handle);
 }
 
 /* If this dissector uses sub-dissector registration add a registration routine.
@@ -367,7 +371,6 @@ void
 proto_reg_handoff_cell(void)
 {
     static gboolean initialized = FALSE;
-    static dissector_handle_t cell_handle;
     static range_t *cell_ssl_range = NULL;
 
     if (!initialized) {
@@ -375,7 +378,8 @@ proto_reg_handoff_cell(void)
          * dissect_cell() returns the number of bytes it dissected (or 0
          * if it thinks the packet does not belong to PROTONAME).
          */
-        cell_handle = new_register_dissector("cell", dissect_cell, proto_cell);
+        //OLD: cell_handle = new_register_dissector("cell", dissect_cell, proto_cell);
+        cell_handle = register_dissector("cell", dissect_cell, proto_cell);
         dissector_add_uint("tcp.port", 0, cell_handle);
         initialized = TRUE;
 
