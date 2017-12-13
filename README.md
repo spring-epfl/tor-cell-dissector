@@ -14,7 +14,7 @@ Tested on Debian jessie and stretch only.
 
 1. Install: 
 
-	Copy `cell.so`  to `~/.wireshark/plugins`
+	Copy `cell.so`  to `~/.config/wireshark/plugins`
 
 # Getting the premaster.txt
 
