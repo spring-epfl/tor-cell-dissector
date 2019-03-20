@@ -343,13 +343,13 @@ proto_register_cell(void)
 static void
 range_delete_cell_ssl_callback(guint32 port) {
 	// ORIGINAL: ssl_dissector_delete(port, "cell", TRUE);
-    ssl_dissector_delete(port, cell_handle);
+    ssl_dissector_delete(port, cell_handle, TRUE);
 }
 
 static void
 range_add_cell_ssl_callback(guint32 port) {
 	// ORIGINAL: ssl_dissector_add(port, "cell", TRUE);
-    ssl_dissector_add(port, cell_handle);
+    ssl_dissector_add(port, cell_handle, TRUE);
 }
 
 /* If this dissector uses sub-dissector registration add a registration routine.
