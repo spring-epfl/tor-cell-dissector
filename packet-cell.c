@@ -22,6 +22,7 @@
  */
 
 #include "config.h"
+#include "packet-cell.h"
 
 #if 0
 /* Include only as needed */
@@ -30,22 +31,16 @@
 #endif
 #include <stdio.h>
 
-#include <glib.h>
-
 #include <epan/packet.h>
 #include <epan/prefs.h>
 #include <epan/dissectors/packet-ssl.h>
+#include <epan/wmem/wmem.h>
 
 #define SSL_CELL_DEFAULT_PORT_RANGE "5000"
 #define CELL_MAX_INFO_COLUMN_LEN 100
 
 static dissector_handle_t cell_handle;
 
-/* Forward declaration that is needed below if using the
- * proto_reg_handoff_cell function as a callback for when protocol
- * preferences get changed. */
-void proto_reg_handoff_cell(void);
-void proto_register_cell(void);
 
 /* Initialize the protocol and registered fields */
 static int proto_cell = -1;
@@ -92,8 +87,7 @@ static gint ett_cell = -1;
 /* Helper function to assemble the info column */
 static void
 add_cell_info(char *buffer, int *idx, guint8 cell_command) {
-    const char *info = val_to_str(cell_command, cell_commands,
-            "Unknown cmd(%d)");
+    const char *info = val_to_str(cell_command, cell_commands, "Unknown cmd(%d)");
     int available = CELL_MAX_INFO_COLUMN_LEN - *idx;
     int copied;
     if (*idx == 0)
@@ -108,9 +102,7 @@ add_cell_info(char *buffer, int *idx, guint8 cell_command) {
 
 /* Code to actually dissect the packets */
 static int
-dissect_cell(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree,
-        void *data _U_)
-{
+dissect_cell(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree, void *data _U_) {
     /* Set up structures needed to add the protocol subtree and manage it */
     proto_item *ti;
     proto_tree *cell_tree;
@@ -211,14 +203,10 @@ dissect_cell(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree,
             add_cell_info(info_column, &info_column_idx, 7);
             ti = proto_tree_add_item(tree, proto_cell, tvb, 0, -1, ENC_NA);
             cell_tree = proto_item_add_subtree(ti, ett_cell);
-            proto_tree_add_item(cell_tree, hf_cell_circid, tvb, offset,
-                    2, ENC_NA);
-            proto_tree_add_item(cell_tree, hf_cell_command, tvb, offset + 2,
-                    1, ENC_BIG_ENDIAN);
-            proto_tree_add_item(cell_tree, hf_cell_length, tvb, offset + 3,
-                    2, ENC_BIG_ENDIAN);
-            proto_tree_add_item(cell_tree, hf_cell_payload, tvb, offset + 5,
-                    payload_length, ENC_NA);
+            proto_tree_add_item(cell_tree, hf_cell_circid, tvb, offset, 2, ENC_NA);
+            proto_tree_add_item(cell_tree, hf_cell_command, tvb, offset + 2, 1, ENC_BIG_ENDIAN);
+            proto_tree_add_item(cell_tree, hf_cell_length, tvb, offset + 3, 2, ENC_BIG_ENDIAN);
+            proto_tree_add_item(cell_tree, hf_cell_payload, tvb, offset + 5, payload_length, ENC_NA);
             offset += required_length;
         } else {
             /* we just assume this is a cell packet of version >=4 (cellid is 4
@@ -252,18 +240,14 @@ dissect_cell(tvbuff_t *tvb, packet_info *pinfo, proto_tree *tree,
             add_cell_info(info_column, &info_column_idx, cell_command);
             ti = proto_tree_add_item(tree, proto_cell, tvb, 0, -1, ENC_NA);
             cell_tree = proto_item_add_subtree(ti, ett_cell);
-            proto_tree_add_item(cell_tree, hf_cell_circid, tvb, offset,
-                    4, ENC_NA);
-            proto_tree_add_item(cell_tree, hf_cell_command, tvb, offset + 4,
-                    1, ENC_BIG_ENDIAN);
+            proto_tree_add_item(cell_tree, hf_cell_circid, tvb, offset, 4, ENC_NA);
+            proto_tree_add_item(cell_tree, hf_cell_command, tvb, offset + 4, 1, ENC_BIG_ENDIAN);
             offset += 5;
             if (cell_command >= 128) {
-                proto_tree_add_item(cell_tree, hf_cell_length, tvb, offset,
-                        2, ENC_BIG_ENDIAN);
+                proto_tree_add_item(cell_tree, hf_cell_length, tvb, offset, 2, ENC_BIG_ENDIAN);
                 offset += 2;
             }
-            proto_tree_add_item(cell_tree, hf_cell_payload, tvb, offset,
-                    payload_length, ENC_NA);
+            proto_tree_add_item(cell_tree, hf_cell_payload, tvb, offset, payload_length, ENC_NA);
             offset += payload_length;
         }
     }
@@ -334,22 +318,23 @@ proto_register_cell(void)
             proto_reg_handoff_cell);
 
     /* dissect on ports setting */
-    range_convert_str(&global_cell_ssl_range, SSL_CELL_DEFAULT_PORT_RANGE,
-            65535);
-    prefs_register_range_preference(cell_module, "ssl.port", "SSL/TLS Ports",
-            "SSL/TLS Ports range", &global_cell_ssl_range, 65535);
+    range_convert_str(
+        wmem_epan_scope(),
+        &global_cell_ssl_range,
+        SSL_CELL_DEFAULT_PORT_RANGE,
+        65535
+    );
+    prefs_register_range_preference(cell_module, "ssl.port", "SSL/TLS Ports", "SSL/TLS Ports range", &global_cell_ssl_range, 65535);
 }
 
 static void
-range_delete_cell_ssl_callback(guint32 port) {
-	// ORIGINAL: ssl_dissector_delete(port, "cell", TRUE);
-    ssl_dissector_delete(port, cell_handle);
+range_delete_cell_ssl_callback(guint32 port, gpointer handle) {
+    ssl_dissector_delete(port, handle);
 }
 
 static void
-range_add_cell_ssl_callback(guint32 port) {
-	// ORIGINAL: ssl_dissector_add(port, "cell", TRUE);
-    ssl_dissector_add(port, cell_handle);
+range_add_cell_ssl_callback(guint32 port, gpointer handle) {
+    ssl_dissector_add(port, handle);
 }
 
 /* If this dissector uses sub-dissector registration add a registration routine.
@@ -379,18 +364,20 @@ proto_reg_handoff_cell(void)
          * if it thinks the packet does not belong to PROTONAME).
          */
         //OLD: cell_handle = new_register_dissector("cell", dissect_cell, proto_cell);
+        //Note OLD: cell_handle = register_dissector("cell", dissect_cell, proto_cell);
+        //cell_handle = create_dissector_handle(dissect_cell, proto_cell);
         cell_handle = register_dissector("cell", dissect_cell, proto_cell);
         dissector_add_uint("tcp.port", 0, cell_handle);
         initialized = TRUE;
 
     } else {
         /* remove any old registrations, we will register them fresh below */
-        range_foreach(cell_ssl_range, range_delete_cell_ssl_callback);
-        g_free(cell_ssl_range);
+        range_foreach(cell_ssl_range, range_delete_cell_ssl_callback, cell_handle);
+        wmem_free(wmem_epan_scope(), cell_ssl_range);
     }
 
-    cell_ssl_range = range_copy(global_cell_ssl_range);
-    range_foreach(cell_ssl_range, range_add_cell_ssl_callback);
+    cell_ssl_range = range_copy(wmem_epan_scope(), global_cell_ssl_range);
+    range_foreach(cell_ssl_range, range_add_cell_ssl_callback, cell_handle);
 }
 
 /*

@@ -1,23 +1,27 @@
-# Compiling the cell dissector
+# Tor cell dissector plugin for Wireshark
 
-Tested on Debian jessie and stretch only.
+## Compilation
 
-1. Prepare
+Compiling the dissector requires a C compiler, Make, and Wireshark development files, as well as Python3 for some code generation.
 
-        sudo apt-get build-dep wireshark
-        sudo apt-get install libwireshark-dev
-        sudo apt-get install libwiretap-dev
+Those requirements can be installed on Debian or Ubuntu with the following command:
+```
+apt-get install build-essential make libwireshark-dev libwiretap-dev python3 wireshark-dev
+```
 
-1. Compile
+Once you have installed the requirements, the dissector can be build with `make`:
+```
+make
+```
 
-        make
+To use the dissector, you need copy the resulting library `cell.so` to your local Wireshark directory (on Linux, `~/.local/lib/wireshark/plugins/x.y/epan` where `x.y` is the version of Wireshark).
 
-1. Install: 
 
-	Copy `cell.so`  to `~/.config/wireshark/plugins`
+## Usage
 
-# Getting the premaster.txt
+To analyse the cells, Wireshark requires the encryption keys used by tor.
+They can be retrieved by loading the symbols from `sslkeylog` (provided in its own subdirectory) when running the Tor daemon.
 
-Compile sslkeylog (provided in a subdirectory), then start the tor daemon using
-
-    SSLKEYLOGFILE=premaster.txt LD_PRELOAD=./libsslkeylog.so /usr/bin/tor ...
+```
+SSLKEYLOGFILE=premaster.txt LD_PRELOAD=./libsslkeylog.so /usr/bin/tor [...]
+```
